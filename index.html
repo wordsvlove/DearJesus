@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>31日靈修：在日常中與主同行</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #fcfbf9;
+            color: #333;
+            scroll-behavior: smooth;
+        }
+        h1, h2, h3, h4, .serif { font-family: 'Noto Serif TC', serif; }
+        .gradient-bg { background: linear-gradient(135deg, #e6eed8 0%, #d4e0c3 100%); }
+        .card-shadow { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); }
+        
+        #stop-audio-btn {
+            transition: all 0.3s ease;
+            transform: translateY(100px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #stop-audio-btn.show {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* 隱藏非當日的文章 */
+        .day-article {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .day-article.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 大綱 hover 效果 */
+        .outline-item {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .outline-item:hover {
+            background-color: #ecfdf5; /* emerald-50 */
+            color: #059669; /* emerald-600 */
+            transform: translateX(4px);
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800 leading-relaxed pb-20">
+
+    <!-- 浮動的停止播放按鈕 -->
+    <button id="stop-audio-btn" onclick="stopAudio()" class="fixed bottom-6 right-6 bg-rose-500 hover:bg-rose-600 text-white shadow-xl rounded-full px-6 py-3 flex items-center z-50 font-medium">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"/></svg>
+        停止語音朗讀
+    </button>
+
+    <!-- Header -->
+    <header class="gradient-bg py-16 px-6 sm:px-12 lg:px-24 border-b border-gray-200">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-4xl sm:text-5xl font-bold text-gray-900 mb-4 leading-tight">在日常中與主同行：<br><span class="text-emerald-700">活出生命之道</span></h1>
+            <p class="text-lg text-gray-700 mb-6 max-w-2xl serif">
+                在這喧囂、焦慮且步伐極快的世代中，邀請你每天停留15分鐘，透過這31天的靈修旅程，讓神的話語如慢火般燉煮你的心靈。<br>
+                <span class="text-sm text-emerald-800 mt-3 inline-flex items-center bg-emerald-100 px-4 py-1.5 rounded-full shadow-sm">
+                    <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.809L5 14.5H4a2 2 0 01-2-2v-5a2 2 0 012-2h1l3.293-2.309a1 1 0 01.09-.015zM12 7a1 1 0 112 0 1 1 0 01-2 0zM14 9a1 1 0 112 0 1 1 0 01-2 0zM16 11a1 1 0 112 0 1 1 0 01-2 0z" clip-rule="evenodd"/></svg>
+                    提示：點擊段落旁的喇叭圖示，可聆聽靈修內容。最下方可選讀其他天數。
+                </span>
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto py-12 px-6 sm:px-12">
+        <section id="daily-content">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end mb-8 border-b-2 border-emerald-600 pb-3 gap-3">
+                <h2 class="text-3xl font-bold text-gray-900">每日靈修</h2>
+                <div id="current-date-display" class="text-emerald-700 font-medium bg-emerald-50 border border-emerald-100 px-4 py-1.5 rounded-full text-sm shadow-sm inline-block">
+                    載入中...
+                </div>
+            </div>
+            
+            <!-- 生成31天內容的容器 -->
+            <div id="days-container"></div>
+        </section>
+
+        <!-- Outline Section -->
+        <section class="mt-20 pt-12 border-t border-gray-200" id="outline-section">
+            <h2 class="text-3xl font-bold text-gray-900 mb-8 pb-2 border-b-2 border-emerald-600 inline-block">31天主題大綱 <span class="text-xl font-normal text-gray-500">(選讀點擊)</span></h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="outline-container">
+                <!-- 動態生成大綱 -->
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const stopBtn = document.getElementById('stop-audio-btn');
+
+        const devotionalData = [
+            {
+                day: 1, week: 1, weekTitle: "第一週：試煉中的生命重塑",
+                title: "百般試煉中的大喜樂",
+                scripture: "「作神和主耶穌基督僕人的雅各，請散住十二個支派之人的安。我的弟兄們，你們落在百般試煉中，都要以為大喜樂；」",
+                reference: "— 雅各書 1:1-2",
+                reflection: "雅各一開始便用極震撼的話向身處痛苦的信徒請安。他指出信徒「落在」不如意的環境是必然的，且試煉是各式各樣、排山倒海而來的。他要求我們「都要以為大喜樂」，並非要我們主動追求苦難，而是當試煉臨到時，要徹底轉換心態，將其視為神餽贈禮物的機會。在神的主權下，試煉的本質不再是懲罰，而是生命的化妝祝福。",
+                insight: "在這講求效率與掌控的世代，我們常把「失控」與「挫折」視為人生的咒詛。當計劃被打亂、健康亮起紅燈，我們的本能是焦慮與埋怨，因為這意味著我們失去了安全感。然而，試煉其實是天父溫柔的邀請，祂要我們放下對「絕對順利」的執著。當我們不再把力氣花在抗拒環境，而是安息在祂的主權中，我們就會發現，這些不如意正是靈魂成長的沃土，是神為我們量身訂做的重量訓練。",
+                question: "當你最近「落在」不如意、計劃泡湯的環境時，你的第一反應是埋怨，還是嘗試用「以為大喜樂」的屬靈眼光看待？",
+                prayer: "天父，我知道人生常面臨百般試煉，我的本能總是逃避。求祢奪回我的眼光，看清祢容讓不如意發生，已預備了最好的生命塑造。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 2, week: 1,
+                title: "信心試驗生出忍耐",
+                scripture: "「因為知道你們的信心經過試驗，就生忍耐。」",
+                reference: "— 雅各書 1:3",
+                reflection: "我們的信心不能只憑一時熱心去拼搏，必須經過「試驗」才能證實其真實性。許多信徒追求神蹟奇事，以為這樣信心就能突飛猛進。但我們必須明白：「憑肉眼能看見之事，便無須運用信心」。神加增信心的方法不是讓我們眼見神蹟，而是讓我們「經受試煉」，在逆境中磨練出「忍耐」（Long Suffering）。忍耐是對神有信心的最真實表現。",
+                insight: "我們活在一個「即時滿足」的世界，遇到痛苦時，總希望能有一帖特效藥瞬間解決。我們甚至會用追求超自然的神蹟來逃避必須面對的生命功課。然而，靈命的成熟是沒有捷徑的。「忍耐」就是選擇留在神所允許的環境中，不急著逃跑。這過程雖然煎熬，但正是這份與痛苦共處的堅韌，能讓我們的信心從膚淺的激情，轉化為深沉的底蘊。",
+                question: "面對無法一夕改變的痛苦，你是否能接納「經歷受苦」是信心長大的唯一途徑，而非總求特效藥？",
+                prayer: "主啊，我不求眼見的奇事代替信心。我願在逆境中忍耐，因為唯有經過試驗的信心，才能結出堅韌的果子。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 3, week: 1,
+                title: "容讓忍耐在時間中作完工",
+                scripture: "「但忍耐也當成功……」",
+                reference: "— 雅各書 1:4甲",
+                reflection: "「忍耐也當成功」在原文中，是要求信徒容讓忍耐繼續發展下去，發生果效。我們最常犯的錯誤是：一遇考驗，就急得像熱鍋上的螞蟻，渴望施展渾身解數驅走它。但聖經提醒我們，人生許多苦難是改變不了也無須去改變的。我們要像容讓一棵樹慢慢成長一樣，栽培忍耐，容許它在生命中停留作工，不要恐慌地試圖用人為手段扭轉。",
+                insight: "面對僵局，我們的無力感往往會轉化為急躁的控制慾。我們害怕停滯不前，害怕那種「什麼都不能做」的空白。但屬靈的成長，往往發生在我們放棄掙扎、選擇安靜等候的時刻。容許時間在你的傷口和處境上作工吧。神沒有忘記你，祂只是在用一種比你預期更緩慢、卻更深刻的方式，重塑你的生命。",
+                question: "面對一個長期無法解決的難處，你願意放手、勒住焦慮，容許「忍耐」在生命中停留足夠的時間來作工嗎？",
+                prayer: "主啊，赦免我在難處中的瞎折騰。我願安靜下來，像等候一棵樹長大般，容讓忍耐在生命中作完它的工作。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 4, week: 1,
+                title: "在試煉中求「看得通」的智慧",
+                scripture: "「……使你們成全完備，毫無缺欠。你們中間若有缺少智慧的，應當求那厚賜與眾人、也不斥責人的神，主就必賜給他。」",
+                reference: "— 雅各書 1:4乙-5",
+                reflection: "試煉臨到時，我們最需要的不是難處立刻消失，而是向神求「智慧」。智慧能讓我們把事情看得通透，明白苦難對信心的永恆好處。神是一位「厚賜」的神，只要一開口祂早已預備好；祂也是「不斥責人」的神，不會先痛罵我們的無能軟弱才勉為其難地施捨智慧。",
+                insight: "當生活遭遇打擊，我們心底常投射出一個嚴厲的上帝，以為自己搞砸了就會被責備，因此不敢坦然來到神面前求助。但這段經文打破了這種恐懼。天父的懷抱是向軟弱者完全敞開的。祂不在乎你現在有多狼狽，祂只在乎你是否願意放下硬撐的面具，向祂支取那能看透迷霧的屬靈眼光。",
+                question: "當你求問神時，你的禱告是在要求「神按我的方式解決」，還是在求「神賜我智慧看透這事的屬靈意義」？",
+                prayer: "厚賜恩典的父，我承認當下缺乏智慧。我相信祢絕不斥責我的愚昧，求祢將屬靈的透視力賞賜給我。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 5, week: 1,
+                title: "不疑惑的堅定祈求",
+                scripture: "「只要憑著信心求，一點不疑惑；因為那疑惑的人，就像海中的波浪，被風吹動翻騰。心懷二意的人，在他一切所行的路上都沒有定見。」",
+                reference: "— 雅各書 1:6-8",
+                reflection: "落在長期的考驗中，最容易發生信心動搖。疑惑會讓人心懷二意，像海中的波浪隨風翻騰，對神失去期盼。求智慧要「一點不疑惑」，意味著我們要有一股「定意」——即便環境再幽暗、神似乎仍未動手，我們依然深信神不改變的美意與愛，不讓心靈在焦慮中失守。",
+                insight: "漫長的等待是滋生懷疑的溫床。當禱告遲遲未蒙應允，我們的心很容易隨著環境的風吹草動而起伏不定。然而，真正的平安不是來自外在的風平浪靜，而是內在對神屬性的篤定。在看似沒有指望的時候，選擇「定意」相信祂的良善，這份堅持將成為你靈魂深處最穩固的錨。",
+                question: "在漫長的等待中，你的心是否正像海浪般起伏？你要在什麼事上，對神下一份「定意相信，絕不放棄」的決心？",
+                prayer: "穩固我心的主，求祢赦免我的心懷二意。我定意抓緊祢的應許，一點不疑惑地向祢祈求，讓我在考驗中擁有定見。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 6, week: 1,
+                title: "從「移民考驗」看呼召的印證",
+                scripture: "「卑微的弟兄升高，就該喜樂；富足的降卑，也該如此。因為他必要過去，如同草上的花一樣……」",
+                reference: "— 雅各書 1:9-11",
+                reflection: "富足降卑是一大試煉，但得智慧的人能看透地上的得失如花草般轉瞬即逝。有牧者分享當年面臨移民抉擇、與親人意願違背的痛苦，神賜他智慧看明：這場看似遺憾的苦難，其實是神給他留在原地理事奉的「呼召印證」。當看明這是神的禮物時，心中便湧流出無比的喜樂。",
+                insight: "我們常不自覺地將安全感建立在地位、財富或別人的評價上。當這些如草之花凋謝，或面臨人生重大的遺憾時，我們彷彿失去了自我的價值。其實，每一次看似被逼到牆角的「降卑」，都是神在幫助我們拆毀虛假的安全感。在失去中認出神更崇高的呼召，你就能將遺憾轉化為生命的確據。",
+                question: "面對人生中的重大遺憾或失去，你是否能在看似「降卑」的處境中，求智慧認出那是神給你的獨特呼召印證？",
+                prayer: "主啊，地上的繁華如草上的花終必凋謝。求祢賜我智慧，在面臨痛苦抉擇的關口，能看清祢更崇高的心意。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 7, week: 1,
+                title: "智障女兒是神差來的「拯救」",
+                scripture: "「忍受試驗的人是有福的，因為他經過試驗之後，必得生命的冠冕，這是主應許給那些愛祂之人的。」",
+                reference: "— 雅各書 1:12",
+                reflection: "信心在經歷忍受試煉後，會得著不受環境動搖的生命冠冕。曾有位神學院同工，因照顧智障女兒耗費心血、耽誤事奉而痛苦不解。後來神賜下亮光，讓他看透：這女兒是神差來「拯救」他的禮物，免於他陷於事奉的虛浮，逼他腳踏實地抓住生命實質。眼光一轉，整個人便得著釋放。",
+                insight: "我們生命中常有一些甩不掉的沉重包袱，也許是身體的限制、家庭的軟弱或無法改變的環境。我們日夜祈求神將它挪走。但有時候，這些看似殘缺的重擔，正是神為了保護我們不滑入驕傲與虛浮所設置的「安全栓」。當我們不再抗拒，而是擁抱這份化妝的禮物，靈魂的重擔就會變成生命的冠冕。",
+                question: "如果神要藉著你生命中的某個「重擔」來拯救你脫離自大與虛浮，你願意從這個角度重新為此事感謝神嗎？",
+                prayer: "主啊，赦免我常把祢包裝醜陋的禮物當作災難。讓我看明生命中的重擔，其實是祢為了拯救我所差來的使者。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 8, week: 1,
+                title: "同一個處境的兩種結局",
+                scripture: "「人被試探，不可說：『我是被神試探』；因為神不能被惡試探，祂也不試探人。」",
+                reference: "— 雅各書 1:13",
+                reflection: "在聖經原文中，「試煉」與「試探」是同一個字。這意味著：同一個打擊（如失業、挫折），本質上是同一件事。若存信心求智慧，它就是得生命冠冕的「試煉」；若放任私慾、埋怨神，它就被轉化成引誘犯罪的「試探」。神絕不試探人，結局完全取決於我們心態的抉擇。",
+                insight: "遭遇創傷時，我們很容易覺得自己是個徹頭徹尾的受害者，任由自憐與怨恨在心中蔓延。這種心態若不加節制，就會將困境變成讓我們遠離神的深淵。我們必須看清，每一個艱難的處境都是一場靈魂的爭戰。不要讓過去的傷痛成為你今天遠離神的藉口，主動選擇讓它成為信心的墊腳石。",
+                question: "當遭遇不如意時，你是否會將犯罪或遠離神的責任推給環境？你要如何阻止私慾將考驗變成犯罪的試探？",
+                prayer: "至聖的主，當面臨幽暗打擊時，保守我不怪罪環境與祢。引導我將處境轉化為信心長大的試煉，而非罪惡的試探。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 9, week: 1,
+                title: "失戀：從私慾懷胎到罪惡生子",
+                scripture: "「但各人被試探，乃是被自己的私慾牽引誘惑的。私慾既懷了胎，就生出罪來；罪既長成，就生出死來。」",
+                reference: "— 雅各書 1:14-15",
+                reflection: "雅各用「生育」的比喻描寫罪的成長。我們被試探是被內心的私慾牽引。許多人最難闖過的一關就是關係的失落（如失戀）。有人失戀後意志消沉，埋怨神，藉此遠離教會，這就是私慾生罪至死的悲劇。但也有人在痛苦中求智慧反省，醒悟這是被神拯救的經歷，生命因而得勝更新。",
+                insight: "當我們深愛的關係破裂，或期待深深落空時，內心的空洞很容易被苦毒與不甘心填滿。這些情緒就像種子，若任由它們在心裡「懷胎」，最終會扼殺我們的靈性生機。面對傷痛，我們需要溫柔而堅定地拒絕自憐的誘惑。讓神的愛來包紮傷口，在破碎中經歷祂那不離不棄的重建大能。",
+                question: "回顧過往或當下的「失落」，你是否正任由怨恨、自憐等私慾在心中懷胎？你要如何靠神走出陰霾？",
+                prayer: "拯救我的主，求祢勒住我的私慾，不讓怨恨在傷痛中懷胎。在失落的重創中，求祢用祢的話挽救我，經歷生命的復興。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 10, week: 1,
+                title: "不改變的眾光之父",
+                scripture: "「我親愛的弟兄們，不要看錯了。各樣美善的恩賜和各樣全備的賞賜都是從上頭來的，從眾光之父那裡降下來的；在祂並沒有改變，也沒有轉動的影兒。」",
+                reference: "— 雅各書 1:16-17",
+                reflection: "身處千變萬化的亂世中，雅各嚴厲警告：「不要看錯了！」不要以為不如意是神在捉弄你。神是「眾光之父」，但祂的信實卻不像日晷的陰影會隨日照變幻不定。在祂並沒有轉動的影兒。祂是永恆不變的美善賞賜者，早已定意要把最好的恩賜（包括試煉中的智慧）賜給我們。",
+                insight: "我們的情緒和對神的信任，常常像天氣一樣陰晴不定。環境順利時覺得神很愛我，遭遇打擊時就覺得神拋棄了我。但這位眾光之父的愛，是絕對恆定的。即便試煉讓環境看起來一片陰暗，也不代表光源改變了。在最深沉的迷霧中，仍緊緊抓住祂不變的美善，是我們靈魂得以安穩的唯一秘訣。",
+                question: "面對環境的不確定性，你對神的信心是否會隨之轉動？你願意在迷霧中依然咬定「神不改變」的信念嗎？",
+                prayer: "眾光之父，世事如陰影轉動，但祢永不改變。我不再憑感覺判定祢的愛，深信祢容讓試煉臨到，已定意賞賜我最好的恩賜。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 11, week: 2, weekTitle: "第二週：神話語的栽種與慢燉",
+                title: "快聽慢說的「交通流量控制」",
+                scripture: "「祂按自己的旨意，用真道生了我們……但你們各人要快快地聽，慢慢地說，慢慢地動怒，」",
+                reference: "— 雅各書 1:18-19",
+                reflection: "要吸納真道，雅各用了一個奇妙比喻：「快快地聽，慢慢地說」。現代信徒最大的靈性危機，是只顧向世界快速付出，對神的話卻吸納不足。就像繁忙的交通，我們需要對心靈進行「路面流量控制」：開三線通道容許神的話駛入，僅留一線讓自我宣洩駛出，為神騰出心靈空間。",
+                insight: "我們總是急著向世界表達自己、急著抱怨、急著證明自己的價值，卻很少安靜下來傾聽真理的聲音。在人際互動中，我們也常急於反駁，生怕自己吃虧。這種「快說」的習慣，往往源自於內心的焦慮與不安。當你學會為自己的舌頭踩煞車，為聆聽神留出足夠的頻寬，你的靈魂才能真正重新得力。",
+                question: "你是否總是急著向世界表達與抱怨，對神的話卻聽而不聞？今天你能在哪裡「踩煞車」為神騰出空間？",
+                prayer: "主啊，求祢在我的心靈架設流量控制。勒住我急著說話、抱怨的衝動，開通我傾聽的管道，讓真理當先。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 12, week: 2,
+                title: "存溫柔的心拔除心靈雜草",
+                scripture: "「因為人的怒氣不能成就神的義。所以，你們要脫去一切的污穢和盈餘的邪惡……」",
+                reference: "— 雅各書 1:20-21甲",
+                reflection: "神的話是一粒「種子」，我們的心靈是「土壤」。要把種子種好，首要任務是「整地拔草」。心靈泥土上的罪惡與污穢就像野草，丁點兒都不能留。我們不能單靠頭腦讀經，必須先求神赦免、潔淨我們的罪，讓靈性在神面前得著清乾淨的安息，好種子才有發芽的空間。",
+                insight: "帶著滿腦子的憤怒、焦慮與未處理的世俗雜念去讀經，就像在長滿荊棘的硬地上撒種，真理根本無法穿透我們剛硬的心防。心靈需要刻意的清理與沉澱。不要害怕面對自己內心的污穢，誠實地把它們攤在神面前，求祂用恩典的犁耙翻鬆你的心田。唯有被潔淨過的柔軟土壤，才能孕育出生命的果實。",
+                question: "讀經靈修前，你是否常帶著未處理的憤怒與雜念？你願意在今天多花三分鐘，誠實求神拔除心靈的野草嗎？",
+                prayer: "聖潔的主，我心靈常長滿憤怒與私慾的野草。在領受祢的道前，求祢徹底潔淨我的過犯，讓我的心成為清乾淨的好土。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 13, week: 2,
+                title: "放下你的「既定方案」",
+                scripture: "「……存溫柔的心領受那所栽種的道，就是能救你們靈魂的道。」",
+                reference: "— 雅各書 1:21乙",
+                reflection: "「溫柔」在原文中是指「謙卑」，本質是「不堅持己見」。我們尋求神時最常自欺：心中早已預備好不能更改的「既定方案」，只求神背書。真正的溫柔是放下自己的既定立場，向神開放那意想不到的選項。像泥土領受種子一樣，不需靠聰明死撐，只需徹底放手，神的話就會主動動工。",
+                insight: "我們常帶著條件來尋求引導，甚至在心中早就寫好了劇本，只等神來配合演出。當神提出超出我們計畫的建議時，我們往往會本能地抗拒。真正的溫柔，是願意放下對未來的絕對掌控權，承認神的道路高過我們的道路。放手雖然會帶來不安，但這卻是讓祂旨意暢通無阻的第一步。",
+                question: "在面對前途或事奉時，你是否正關上大門，拒絕神提出超出你預設選項的建議？你要如何學會放手？",
+                prayer: "主啊，我向祢獻上溫柔謙卑的心。我放下所有自以為聰明的預設選項，向祢徹底開放，容許祢動搖改變我的決定。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 14, week: 2,
+                title: "不行道，是因為「心不在焉的忘記」",
+                scripture: "「只是你們要行道，不要單單聽道，自己欺哄自己。因為聽道而不行道的，就像人對著鏡子看……隨即忘了他的相貌如何。」",
+                reference: "— 雅各書 1:22-24",
+                reflection: "神的話是一面反照靈魂本相的鏡子。信徒不行道，根本不是因為神的道太難，而是在於「忘記」。這不是健忘，而是「心不在焉」。在主日聽道，到了週間在世界打滾時，腦海裡壓根兒不存在神的話，這就是自己欺哄自己的自欺病態。",
+                insight: "「主日很屬靈，週間很世俗」是現代信徒的通病。我們在聚會中深受感動，轉眼卻又在職場中隨波逐流。這種信仰與生活的分裂，其實是一種自我麻醉。我們需要刻意將信仰的焦點帶入日常的每個抉擇中，讓真理不只停留在筆記本上，而是成為我們應對壓力、處理關係的實際準則。",
+                question: "在星期一的職場與日常生活中，神主日對你說的話佔有多少分量？你如何打破這種隨聽隨忘的自欺循環？",
+                prayer: "主啊，我承認我是個愛照鏡子卻隨即忘記的人。求祢憐憫我心不在焉的冷漠，奪回我的專注，讓我隨時將祢的話鎖在心上。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 15, week: 2,
+                title: "彎腰屈身的「詳細察看」",
+                scripture: "「惟有詳細察看那全備、使人自由之律法的……」",
+                reference: "— 雅各書 1:25甲",
+                reflection: "要克服忘記，第一步是「詳細察看」。原文意指「屈身彎腰仔細觀察鏡中反照的真實自己」。讀經不能水過鴨背，要容讓真理觸碰、暴露我們平時掩蓋起來最醜陋與脆弱的人性陰暗面。神的話必須觸動我們的心靈情感（如信靠、不懼怕），而不僅是增加理性知識。",
+                insight: "我們常習慣偏食，只喜歡聽那些安慰、鼓勵的話，卻本能地逃避真理中刺痛我們的部分。我們害怕直視自己內心的驕傲、自私與軟弱。但唯有勇敢地屈身察看，讓真理的光照進那些我們極力掩飾的幽暗角落，真正的醫治才會發生。讓神的話成為一把手術刀，割除阻礙你生命成長的毒瘤。",
+                question: "你的讀經是快速掠過，還是願意在真理面前「屈身彎腰」，直視內心不敢碰觸的驕傲與污穢？",
+                prayer: "主啊，我願意屈身彎腰，在祢真理的鏡子前誠實觀看自己。求祢的話穿透我的防線，照亮我靈魂最脆弱的角落。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 16, week: 2,
+                title: "如「電子瓦罉」般的慢燉沉浸",
+                scripture: "「……並且時常如此；這人既不是聽了就忘，乃是實在行出來，就在他所行的事上必然得福。」",
+                reference: "— 雅各書 1:25乙",
+                reflection: "「時常如此」指持續停留在神的話語裡。這就像使用「電子瓦罉（慢燉鍋）」長時間炆燉食物直到完全入味。我們不能聽完道就拋諸腦後，必須在週間工作、生活時，讓神的話在心靈深處反覆思量。唯有長時間的慢燉，真理才會融入生命，成為信手拈來的生命特質。",
+                insight: "缺乏反覆的思量，再好的道種也無法生根。在這個碎片化的時代，我們的注意力總是被各種資訊切割。我們需要在每天的縫隙時間中，刻意營造沉浸於神恩典的空間。就像燉湯需要小火慢熬，當真理與你的血肉徹底融合，你就能在突如其來的考驗中，自然流露出基督的性情。",
+                question: "你是如何對待聽到的道的？如何在忙碌的日常行程中，為自己設計「慢火炆燉神話語」的屬靈空間？",
+                prayer: "主啊，我不求快餐式的亮光。我願將祢的話放在我心靈的慢燉鍋中反覆思量，直到真道與我生命徹底融為一體。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 17, week: 2,
+                title: "提防聽道的「防疫針效應」",
+                scripture: "「若有人自以為虔誠，卻不勒住他的舌頭……在神我們的父面前，那清潔沒有玷污的虔誠，就是看顧在患難中的孤兒寡婦，並且保守自己不沾染世俗。」",
+                reference: "— 雅各書 1:26-27",
+                reflection: "現代信徒極易落入「聽道防疫針效應」：重複聽道、知道極多，卻從不實踐，對神的話產生了麻木的抵抗力。真正的虔誠不是神秘體驗，而是具體的社會與人際關係：體現在勒住容易埋怨的舌頭、看顧無回報能力的孤兒寡婦，並保守自己不受自私驕傲的世俗污染。",
+                insight: "當信仰只剩下腦中的神學知識和聚會時的感動，我們的心靈就會逐漸變得剛硬冷漠。我們可能對真理倒背如流，卻對身邊受苦的靈魂視而不見。走向身邊的弱勢者，去觸摸他們真實的艱難，勒住自己那容易論斷的舌頭，是打破屬靈麻木的最佳解藥。愛，必須落地。",
+                question: "面對熟悉的講道，你是感到被觸動，還是麻木覺得「我都懂了」？在關懷弱小與勒住口舌上，你的虔誠真實嗎？",
+                prayer: "天父，救我脫離聽道防疫針的麻木。帶領我走進現實生活，以實質行動活出清潔無玷污的虔誠。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 18, week: 3, weekTitle: "第三週：真實的愛與人際尊嚴",
+                title: "榮耀之主與按外貌待人",
+                scripture: "「我的弟兄們，你們信奉我們榮耀的主耶穌基督，便不可按著外貌待人。」",
+                reference: "— 雅各書 2:1",
+                reflection: "雅各要我們對焦一件事：我們信奉的主是誰？祂是榮耀的主耶穌基督。然而這位主在世上卻毫無外在榮耀可言，無佳形美容。神看人絕不在意外表或擁有，祂看重的是「關係」。我們若憑外外在條件判定弟兄姊妹的價值，就是用惡意挑戰神的價值觀，與信奉榮耀主背道而馳。",
+                insight: "我們常下意識地被世俗的「成就標籤」洗腦，對體面、成功的人獻殷勤，卻忽略了那些平凡無奇的人。這種眼光，其實暴露了我們內心對權力與地位的崇拜。摘下這副有色眼鏡，我們才能看見靈魂在神面前的真實重量。當你學會用基督那份不帶偏見的眼光看待人，你的世界將會變得截然不同。",
+                question: "認識新朋友時，你的目光首先落在他的學歷與外表，還是他內在的品格？這如何粉碎你對世俗的崇拜？",
+                prayer: "榮耀的主耶穌，求祢挪去我世俗的金框眼鏡，讓我看人不再看外表財富，而是看重靈魂價值與愛的關係。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 19, week: 3,
+                title: "金手指與唯一的工作服",
+                scripture: "「若有一個人戴著金戒指，穿著華美衣服，進你們的會堂去；又有一個窮人，穿著骯髒衣服也進去……這豈不是你們偏心待人，用惡意斷定人嗎？」",
+                reference: "— 雅各書 2:2-4",
+                reflection: "一世紀羅馬盛行租借金戒指炫富（金手指）；窮人穿「骯髒衣服」是因為貧困到只有一套日常工作服。會堂執事諂媚金手指，冷落窮人，這種在心中憑財富去「判斷人的價值」就是偏心，是用惡意在斷定人。教會不應成為世俗名利的租借站。",
+                insight: "在群體中，若我們私下將人分為「有利用價值」與「無足輕重」的檔次，這在神眼中是極嚴重的惡意。這不僅傷害了肢體，也貶低了我們自己。我們不需要靠著結交權貴來提升自己的身價，在神的家中，每個人都應該被平等地尊重與接納。用真誠的愛去擁抱那些被邊緣化的人。",
+                question: "教會中是否也存在「先敬羅衣後敬人」的病態？你心中是否私下將人分為不同檔次？",
+                prayer: "主啊，赦免我心中隱而未現的偏心與勢利。每當我羨慕金手指、冷落窮人時，求祢驚醒我，賜我真誠平等待人。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 20, week: 3,
+                title: "信心上的富足與愛神的關係",
+                scripture: "「神豈不是揀選了世上的貧窮人，叫他們在信上富足，並承受祂所應許給那些愛祂之人的國嗎？」",
+                reference: "— 雅各書 2:5",
+                reflection: "神不在乎人的貧窮，祂揀選貧窮人在信心上富足。真正的富有是「關係」——人是否愛祂。就像小女孩對破舊毛公仔愛不釋手，因為建立了深厚的關係。神看重的不是我們擁有什麼，而是我們與祂、與人之間那份不可替代的相愛關係。",
+                insight: "當我們因缺乏物質、地位或外在條件而感到自卑時，往往忘記了自己已經擁有宇宙中最珍貴的資產——天父兒女的身份。這份關係，是任何金錢都買不到的。不要讓世界的價值觀定義你的富足。當你深深體會到自己被這位創造宇宙的主宰所深愛著，你內心的匱乏感就會被永恆的滿足取代。",
+                question: "當你感到自卑時，是否忘記了與天父的關係才是最重要的財富？這份關係是否比成就更得你珍視？",
+                prayer: "天父，謝謝祢揀選了我。我不追求虛有其表的事物，我只要緊緊抱住與祢的相愛關係，成為我一生的滿足。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 21, week: 3,
+                title: "羞辱貧窮人與向強權媚骨",
+                scripture: "「你們反倒羞辱貧窮人。那富足人豈不是欺壓你們……他們不是褻瀆你們所敬奉的尊名嗎？」",
+                reference: "— 雅各書 2:6-7",
+                reflection: "當時富人在法庭欺壓信徒、褻瀆耶穌，信徒卻反倒羞辱被神視為至寶的貧窮人，轉去巴結欺壓他們的富人。這是在摧毀神看重的關係。我們常因利益算計，只去拉攏有利用價值的人，卻忽視弱小，這徹底違背了神家相愛的倫理。",
+                insight: "為了融入主流社會或獲取短暫的利益，我們有時會選擇對不公義的事情視而不見，甚至隨波逐流地去迎合那些有權勢的人。這種信仰的媚俗，不僅讓我們失去了見證的力道，也讓良知逐漸麻木。勇敢地站在真理的一方，神所看重的不是你的八面玲瓏，而是你在壓力下依然堅守原則的風骨。",
+                question: "你是否曾為了社會生存而盲目跟隨強權，排擠弱小？你的人際關係有多少是出於真誠，多少是算計？",
+                prayer: "主啊，求祢赦免我常為利益向權勢妥協。讓我看重關係過於利用價值，保守我存著骨氣捍衛卑微靈魂的尊嚴。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 22, week: 3,
+                title: "至尊律法的刻意犯罪",
+                scripture: "「經記著說：『要愛人如己。』你們若全守這至尊的律法，才是好的。但你們若按外貌待人，便是犯罪……」",
+                reference: "— 雅各書 2:8-9",
+                reflection: "神的律法總綱就是「愛」。有人辯解說關心富人也是實踐愛，但雅各揭穿這面具：只愛富人冷落窮人根本不算數。按外貌待人不是無心之失，而是內心深處刻意為之的犯罪。你選擇不尊重窮人的尊嚴，在律法標準下，已失去了遵守至尊律法的義。",
+                insight: "當我們把熱情只給特定群體，卻對邊緣人冷淡時，這不是無心之過，而是自私的選擇。我們常會用「我也有關心別人」來合理化自己對某些人的刻意忽略。但真愛是不容許偏狹的，至尊的律法要求我們打破同溫層。試著主動關心那些與你背景不同的人，讓基督的愛擴充你狹隘的心胸。",
+                question: "當你選擇性地將熱情給予特定群體時，你能誠實在神面前承認這是刻意的犯罪而非一時疏忽嗎？",
+                prayer: "主耶穌，祢揭穿了我的自私。求祢赦免我刻意忽視弱小的罪，用祢毫無偏心的至尊愛之律法，重新擴充我的心胸。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 23, week: 3,
+                title: "砸碎整片律法的玻璃",
+                scripture: "「因為凡遵守全律法的，只在一條上跌倒，他就是犯了眾條。原來那說『不可姦淫』的，也說『不可殺人』……」",
+                reference: "— 雅各書 2:10-11",
+                reflection: "信徒常以為以貌取人只是小偏心。但律法是一個不容分割的整體，像一片完整的玻璃，損壞一小部分等於整片砸碎。十誡的本質是愛與尊重別人的生命與尊嚴。輕看別人就是踐踏人的尊嚴，等同於違犯了整套誡命。",
+                insight: "我們習慣把罪分大小，對「不尊重人」、「偏心」、「言語刻薄」等態度漫不經心，以為這無傷大雅。但在神眼中，對人格的輕視，同樣是破壞了祂創造的完美秩序。每一次我們踐踏別人的尊嚴，都是在砸碎神聖潔的律法。求神賜給我們一顆敬畏的心，在互動的微小處流露對生命的尊重。",
+                question: "你是否常將罪分大小，以為只要在不殺人上守住，就可以在不尊重人等小事上向神請假？",
+                prayer: "公義的主，求祢赦免我常存僥倖心。讓我知道每次對人的輕看都是在砸碎祢聖潔的玻璃，保守我敬畏地守護人的尊嚴。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 24, week: 3,
+                title: "憐憫向審判誇勝",
+                scripture: "「你們既然要按使人自由的律法受審判，就該照這律法說話行事。因為那不憐憫人的，也要受無憐憫的審判；憐憫原是向審判誇勝。」",
+                reference: "— 雅各書 2:12-13",
+                reflection: "神的律法是為了讓人實踐愛與憐憫的「自由之律法」。我們在這恩典律法下受審，行事說話就必須對人充滿憐憫。若對人不施憐憫、刻意計較，必面臨無憐憫的審判；但若在破損的關係中付出愛與憐憫，神甚願施恩，這憐憫必能向審判誇勝。",
+                insight: "面對別人的軟弱或得罪，我們最直覺的反應往往是揮舞公義的法槌，要求對方付出代價。我們忘記了，自己也是一個天天需要靠著恩典才能存活的罪人。當你選擇用冷酷的標準去衡量別人時，你也在為自己設立同樣冷酷的審判。試著放下定罪，用溫柔的憐憫去包裹別人的過犯。",
+                question: "在面對別人的缺點時，你最先亮出的武器是冷酷的審判還是溫柔的憐憫？",
+                prayer: "慈愛的主，我天天依靠祢的憐憫存活。求祢拿走我定罪人的手，讓我在憐憫的事奉中品嚐到向審判誇勝的平安。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 25, week: 4, weekTitle: "第四週：脫離自我作神的世俗",
+                title: "不要在心中強奪神審判的王座",
+                scripture: "「弟兄們，你們不可彼此批評。人若批評弟兄，論斷弟兄，就是批評律法……設立律法和判斷人的只有一位……你是誰，竟敢論斷別人呢？」",
+                reference: "— 雅各書 4:11-12",
+                reflection: "「批評、論斷」原文指審判、裁定人的罪。這不是口頭說閒話，而是在心底判定對方死有餘辜。對事可判定對錯，但對「人」絕不能審判。判斷人的只有神。當我們在心中論斷弟兄，就是自以為義地否定律法，強奪了神審判的王座，這正是世俗的本質——自我作神。",
+                insight: "用自以為義的態度去定罪他人，往往比那人的軟弱更讓神憂傷。我們喜歡在心裡為別人貼標籤，藉此來凸顯自己的屬靈與正確。我們需要放下那把根本不屬於我們的法槌。每當你想論斷弟兄時，提醒自己：只有神才是判斷人的主。用暗中的代求去代替背後的批評與輕視。",
+                question: "當看到肢體跌倒時，你是同理並為他加添體面，還是在心底裡判定他無藥可救？",
+                prayer: "唯一的審判官，我向祢降服。赦免我常在心中扮演上帝，求祢賜我同理心，用憐憫與代求代替心中的審判。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 26, week: 4,
+                title: "排除神介入的「張狂計劃」",
+                scripture: "「嗐！你們有話說：『今天明天我們要往某城裡去……做買賣得利。』其實明天如何，你們還不知道。你們的生命是什麼呢？你們原來是一片雲霧……」",
+                reference: "— 雅各書 4:13-14",
+                reflection: "雅各舉出對「事」驕傲的例子：商人部署周詳，打算大賺一筆。雅各並非反對做計劃，而是反對一種狂傲心態：聲稱前途完全掌握在自己手裡，不需要神的介入。人的控制慾總想掌控一切得安全感，但生命只是一片隨風而逝的雲霧，我們連明天能否存活都掌控不了。",
+                insight: "我們精心規劃十年藍圖，為未來買足了保險，卻常常忘了我們連明天的一口氣息都無法保證。這種對未來的過度掌控慾，源自於對未知的不安。承認生命的脆弱如雲霧，並不是一種悲觀，而是一種讓我們回到真實的智慧。將緊抓著明天的雙手鬆開，你才能在每一個當下活得從容自在。",
+                question: "在你的學業、事業或理財規劃中，你是否抱著「必定心想事成」的心態，完全將神的介入排除在外？",
+                prayer: "主啊，我的生命原來只是一片出現少時就不見的雲霧。求祢赦免我常存的控制慾，我交出對明天的控制，承認一切在祢手中。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 27, week: 4,
+                title: "存「主若願意」的放手謙卑",
+                scripture: "「你們只當說：『主若願意，我們就可以活著，也可以做這事，或做那事。』現今你們竟以張狂誇口……」",
+                reference: "— 雅各書 4:15-17",
+                reflection: "對付世俗控制慾的方法，是在凡事上存著「主若願意」的謙卑心態。我們做事要盡心盡力，但在內心深處必須認定成就皆在神主權下。曾有位青年生意人過度拼搏瀕死學會謙卑，好轉後再度雄心萬丈，結果突然離世。不要試圖用精密的部署去排除神的介入，要學會徹底放手。",
+                insight: "努力盡本分與交出主權並不衝突。最難的功課是：在全力以赴之後，仍能平靜地接受與預期不同的結果。我們常因為事情沒有按照自己的心意發展而陷入抑鬱。學習在心底對神說「主若願意」，就是把自己從「必須成功」的焦慮中釋放出來。確信神的意念高過你的意念，你就能找到安息。",
+                question: "檢視你最近面臨抉擇的心態，你是在堅持「一定要按我的心意達成」，還是心存「主若願意」的全然放手？",
+                prayer: "主啊，主若願意，我就可以活著做這事或那事。我不再堅持按我的時間表完成目標，我向祢的介入完全放手。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 28, week: 4,
+                title: "末世貪戀囤積的烈火審判",
+                scripture: "「嗐！你們這些富足人哪，應當哭泣、號咷……你們的金銀都長了銹；那銹要證明你們的不是，又要吃你們的肉，如同火燒。你們在這末世只知積攢錢財。」",
+                reference: "— 雅各書 5:1-3",
+                reflection: "雅各將目光移向末世審判。富有本身不是罪，罪在於盲目貪婪、一味積攢超出所需的財物。在動盪中，人常以為金錢是唯一的安全感。然而，那些囤積到生銹的金屬，正是控告貪得無厭的鐵證。那銹會吃人的肉，如同火燒，使人身心俱疲、靈性衰殘。",
+                insight: "為了永遠無法填滿的安全感而拼命賺錢，最終只會賠上健康、關係與靈魂。真正的避難所從來都不是銀行存款。當我們把金錢當作終極的倚靠時，它就會變成吞噬我們平安的烈火。檢視你的財務觀，你是在管理資源，還是成為了金錢的奴隸？學會知足並樂意分享，是打破焦慮的有效方法。",
+                question: "面對不確定的未來，你是否陷入「抓奪越多越安全」的末世貪婪？這是否正像吞吃肉體的火般讓你疲憊？",
+                prayer: "主啊，地上的金銀終必生銹。求祢赦免我在末世中盲目積攢的焦慮，拿去我的貪得無厭，唯獨以祢為終極依靠。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 29, week: 4,
+                title: "不義之財與奢樂嬌養的猶大危機",
+                scripture: "「工人給你們收割莊稼，你們虧欠他們的工錢……你們在世上享美福，好宴樂……定了義人的罪……」",
+                reference: "— 雅各書 5:4-6",
+                reflection: "富人受審還有兩個原因：不義之財與只顧精緻享樂。在末世中，人為了多賺錢可能自以為聰明地佔便宜、剝削他人；又把自己像肥羊般在宰殺的日子嬌養自己的心。經文警告，若在物慾面前冷酷無情，很容易像猶大一樣，為了現實利益出賣我們的主與信仰原則。",
+                insight: "在消費至上、講求利益最大化的商業環境中，保持真誠與不虧欠他人，是基督徒最艱難也最真實的見證。我們常面臨灰色地帶的誘惑，以為只要合法就可以盡情剝削。但神聽見了每一個受屈者的冤聲。在職場上持守正直，寧可吃虧，也不要在物慾驅使下，出賣你對神和對人的愛心。",
+                question: "你在處理金錢或雇佣關係時，是否曾用自以為聰明的手段佔人便宜？是否正不經意地為了利益讓愛心變質？",
+                prayer: "萬軍之主，求祢赦免我曾在金錢上自私的算計與對人的虧欠。保守我不放縱物慾，誓死不為利益出賣信仰原則。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 30, week: 4,
+                title: "農夫的預兆與劇痛中的盼望",
+                scripture: "「弟兄們哪，你們要忍耐，直到主來。看哪，農夫忍耐等候地裡寶貴的出產，直到得了秋雨春雨……看哪，審判的主站在門前了……」",
+                reference: "— 雅各書 5:7-12",
+                reflection: "面對不公與冤屈，信徒不要自亂陣腳。雅各勉勵我們要像農夫等候「秋雨春雨」，看見降雨的跡象（預兆）便知豐收在望，因而安然忍耐。有牧者分享術後劇痛中，因有「傷口必痊癒」的盼望而能忍受。正因審判主已在門前，我們在冤屈中能不埋怨、不虛假起誓，持守忍耐。",
+                insight: "有盼望的等待與絕望的煎熬截然不同。在長期的不公或痛苦中，我們很容易讓苦毒與埋怨侵蝕心靈。但正如農夫看見降雨跡象就能忍耐等候，我們也必須憑信心看見「主已在門口」的預兆。這份確切的盼望，能為我們當下的眼淚賦予永恆的意義。不要讓環境的惡劣奪走你的盼望。",
+                question: "當你遭遇長期的痛苦時，內心是否累積了埋怨？深信「主已在門口」的盼望，如何改變你承受痛苦的性質？",
+                prayer: "主啊，我知道祢來的日子近了。在一切冤屈受苦中，求祢堅固我的信心，讓盼望帶給我無比的堅韌，單一等候祢。奉耶穌的名求，阿們。"
+            },
+            {
+                day: 31, week: 4,
+                title: "平凡人「用禱告來禱告」的永恆大能",
+                scripture: "「……以利亞與我們是一樣性情的人……叫一個罪人從迷路上轉回，便是救一個靈魂不死……」",
+                reference: "— 雅各書 5:13-20",
+                reflection: "雅各在結尾將焦點引向「禱告」。許多人自認屬靈不夠而不禱告，但偉大的以利亞與我們一樣有軟弱。他「懇切禱告」原文是「用禱告來禱告」，指極單純的祈求，沒有宗教花巧，因功效在於神。禱告最要緊的事奉，是挽回迷失的靈魂。將容易埋怨的舌頭轉化為代求，是至高的大能。",
+                insight: "不要把禱告當作聚會的裝飾，也不需要用華麗的詞藻和冗長的神學來堆砌。禱告，就是一個軟弱的受造物，向全能主發出最真實的呼求。帶著你真實的疲憊來到神面前，這就是最具大能的武器。一個挽回靈魂的懇切禱告，勝過千百次完美的策劃。成為那個在破口中防堵、用愛心去挽回的人吧。",
+                question: "你曾否輕看自己平凡的禱告？你的舌頭有多少比例用在埋怨，又有多少奉獻給了為軟弱肢體代求？",
+                prayer: "天父，謝謝祢將禱告特權賜給我這平凡人。我願將舌頭獻給祢，不再論斷，而是為迷失肢體代求，帶出挽回的大能。奉耶穌的名求，阿們。"
+            }
+        ];
+
+        // 日期邏輯：鎖定 2026 年 8 月
+        function getActiveDayForAug2026() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth(); // 0-based, 7 is August
+            const date = now.getDate();
+
+            if (year < 2026 || (year === 2026 && month < 7)) return 1;
+            if (year === 2026 && month === 7) return date;
+            return 31;
+        }
+
+        let currentActiveDay = getActiveDayForAug2026();
+
+        // 渲染內容
+        const contentContainer = document.getElementById('days-container');
+        let htmlContent = '';
+
+        devotionalData.forEach(data => {
+            htmlContent += `
+            <article id="day${data.day}-article" class="day-article bg-white rounded-2xl card-shadow overflow-hidden border border-gray-100">
+                <div class="bg-emerald-800 text-white px-6 sm:px-8 py-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <span class="text-emerald-200 font-semibold tracking-wider text-sm mb-1 block">${data.weekTitle} | DAY ${data.day}</span>
+                        <h3 class="text-2xl font-bold serif">${data.title}</h3>
+                    </div>
+                    <button onclick="speakDay('day${data.day}-article')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-full text-sm font-medium flex items-center transition-colors shadow-sm whitespace-nowrap">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"/></svg>
+                        一鍵聆聽本日
+                    </button>
+                </div>
+                
+                <div class="p-6 sm:p-8 space-y-8">
+                    <!-- 經文 -->
+                    <div>
+                        <h4 class="flex items-center text-sm font-bold text-gray-500 mb-3 uppercase tracking-wide">
+                            今日經文
+                            <button onclick="speakText('day${data.day}-scripture')" class="ml-2 text-emerald-600 hover:text-emerald-800 p-1 rounded-full hover:bg-emerald-50 transition-colors" title="聆聽此段">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                            </button>
+                        </h4>
+                        <div class="bg-gray-50 border-l-4 border-emerald-500 p-5 italic text-gray-700 rounded-r-lg">
+                            <p id="day${data.day}-scripture" class="speakable font-medium text-lg leading-relaxed">${data.scripture}</p>
+                            <p class="text-sm mt-3 text-gray-500 not-speakable font-sans">${data.reference}</p>
+                        </div>
+                    </div>
+
+                    <!-- 聖言反思 -->
+                    <div>
+                        <h4 class="flex items-center text-lg font-bold text-gray-800 mb-3">
+                            <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                            聖言反思
+                            <button onclick="speakText('day${data.day}-reflection')" class="ml-2 text-emerald-600 hover:text-emerald-800 p-1.5 rounded-full hover:bg-emerald-50 transition-colors" title="聆聽此段">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                            </button>
+                        </h4>
+                        <div id="day${data.day}-reflection" class="speakable text-gray-700 leading-relaxed">${data.reflection}</div>
+                    </div>
+
+                    <!-- 心靈觀照 -->
+                    <div>
+                        <h4 class="flex items-center text-lg font-bold text-gray-800 mb-3">
+                            <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                            心靈觀照
+                            <button onclick="speakText('day${data.day}-insight')" class="ml-2 text-emerald-600 hover:text-emerald-800 p-1.5 rounded-full hover:bg-emerald-50 transition-colors" title="聆聽此段">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                            </button>
+                        </h4>
+                        <div id="day${data.day}-insight" class="speakable text-gray-700 leading-relaxed">${data.insight}</div>
+                    </div>
+
+                    <!-- 反思問題 -->
+                    <div class="bg-emerald-50 rounded-xl p-6 border border-emerald-100">
+                        <h4 class="flex items-center text-lg font-bold text-emerald-900 mb-3">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                            反思問題
+                            <button onclick="speakText('day${data.day}-question')" class="ml-2 text-emerald-600 hover:text-emerald-800 p-1.5 rounded-full hover:bg-emerald-100 transition-colors" title="聆聽此段">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                            </button>
+                        </h4>
+                        <div id="day${data.day}-question" class="speakable text-emerald-800 font-medium leading-relaxed">${data.question}</div>
+                    </div>
+
+                    <!-- 結束禱告 -->
+                    <div>
+                        <h4 class="flex items-center text-lg font-bold text-gray-800 mb-3">
+                            <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                            結束禱告
+                            <button onclick="speakText('day${data.day}-prayer')" class="ml-2 text-emerald-600 hover:text-emerald-800 p-1.5 rounded-full hover:bg-emerald-50 transition-colors" title="聆聽此段">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+                            </button>
+                        </h4>
+                        <div id="day${data.day}-prayer" class="speakable text-gray-700 leading-relaxed serif bg-gray-50 p-5 rounded-xl border border-gray-200">${data.prayer}</div>
+                    </div>
+                </div>
+            </article>
+            `;
+        });
+
+        contentContainer.innerHTML = htmlContent;
+
+        // 渲染大綱結構
+        const outlineContainer = document.getElementById('outline-container');
+        const weeks = [
+            { id: 1, title: "第一週：試煉中的生命重塑", start: 1, end: 10 },
+            { id: 2, title: "第二週：神話語的栽種與慢燉", start: 11, end: 17 },
+            { id: 3, title: "第三週：愛與人際關係的尊嚴", start: 18, end: 24 },
+            { id: 4, title: "第四週：脫離自我作神的世俗", start: 25, end: 31 }
+        ];
+
+        let outlineHtml = '';
+        weeks.forEach(week => {
+            outlineHtml += `
+                <div class="bg-white p-6 rounded-xl card-shadow border border-gray-100">
+                    <h3 class="text-xl font-bold text-emerald-800 mb-4 pb-2 border-b border-emerald-100">${week.title}</h3>
+                    <ul class="space-y-1.5 text-gray-600 text-sm">
+            `;
+            for (let i = week.start; i <= week.end; i++) {
+                const dayData = devotionalData.find(d => d.day === i);
+                outlineHtml += `
+                        <li class="outline-item flex items-start" onclick="showDay(${i})">
+                            <span class="font-bold text-emerald-600 w-14 shrink-0">Day ${i}</span> 
+                            <span>${dayData.title}</span>
+                        </li>
+                `;
+            }
+            outlineHtml += `
+                    </ul>
+                </div>
+            `;
+        });
+        outlineContainer.innerHTML = outlineHtml;
+
+        // 切換顯示天數函數
+        function showDay(dayNumber) {
+            document.querySelectorAll('.day-article').forEach(el => el.classList.remove('active'));
+            const targetArticle = document.getElementById(`day${dayNumber}-article`);
+            if (targetArticle) {
+                targetArticle.classList.add('active');
+                document.getElementById('daily-content').scrollIntoView({ behavior: 'smooth' });
+                document.getElementById('current-date-display').innerText = `目前顯示：2026年8月${dayNumber}日`;
+                stopAudio(); // 切換時自動停止上一個語音
+            }
+        }
+
+        // 初始載入時顯示正確日期
+        showDay(currentActiveDay);
+
+        // TTS 腳本
+        if (!('speechSynthesis' in window)) {
+            console.warn("此瀏覽器不支援語音合成 (TTS) 功能。");
+        }
+
+
+        function toggleStopButton(show) {
+            if (show) stopBtn.classList.add('show');
+            else stopBtn.classList.remove('show');
+        }
+
+        function setupUtterance(utterance) {
+            utterance.onend = () => toggleStopButton(false);
+            utterance.onerror = () => toggleStopButton(false);
+        }
+
+        function stopAudio() {
+            window.speechSynthesis.cancel();
+            toggleStopButton(false);
+        }
+
+        function speakText(elementId) {
+            window.speechSynthesis.cancel();
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            const utterance = new SpeechSynthesisUtterance(element.innerText);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.0;
+            
+            setupUtterance(utterance);
+            window.speechSynthesis.speak(utterance);
+            toggleStopButton(true);
+        }
+
+        function speakDay(articleId) {
+            window.speechSynthesis.cancel();
+            const dayContainer = document.getElementById(articleId);
+            if (!dayContainer) return;
+            
+            const speakableElements = dayContainer.querySelectorAll('.speakable');
+            let fullText = '';
+            speakableElements.forEach(el => {
+                fullText += el.innerText + '。 ';
+            });
+            
+            const utterance = new SpeechSynthesisUtterance(fullText);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.0;
+            
+            setupUtterance(utterance);
+            window.speechSynthesis.speak(utterance);
+            toggleStopButton(true);
+        }
+    </script>
+</body>
+</html>
