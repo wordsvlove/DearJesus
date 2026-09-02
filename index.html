@@ -749,18 +749,25 @@
             // 抓取當天顯示的文字內容
             const currentContent = document.getElementById(`day-${activeDay}`);
             
-            // 為了讓語音讀起來順暢，我們過濾掉一些雜訊標籤，提取乾淨的文字
+            // 為了讓語音讀起來順暢，我們提取乾淨的文字
             let textToRead = "";
             const h2 = currentContent.querySelector('h2').innerText;
-            const verse = currentContent.querySelector('.verse-box').innerText;
             
-            textToRead += h2 + "。經文：" + verse + "。";
+            // 處理經文：去掉（）內的章節出處 (例如：創世記 15:6，和合本)
+            let verseText = currentContent.querySelector('.verse-box').innerText;
+            verseText = verseText.replace(/（.*?）|\(.*?\)/g, '').trim();
+            
+            textToRead += h2 + "。經文：" + verseText + "。";
             
             // 抓取所有段落與標題
             const sections = currentContent.querySelectorAll('h3, p');
             sections.forEach(sec => {
                 textToRead += sec.innerText + "。 ";
             });
+
+            // 處理全文本：過濾掉表情符號/圖案符號 (包含 📖, ❤️, 🏃, 🙏 等)
+            // 這樣語音就不會停頓或試圖朗讀圖案
+            textToRead = textToRead.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2764}\u{FE0F}\u{200D}]/gu, '');
 
             currentUtterance = new SpeechSynthesisUtterance(textToRead);
             currentUtterance.lang = 'zh-TW'; // 設定繁體中文
@@ -817,4 +824,3 @@
     </script>
 </body>
 </html>
-```eof
